@@ -80,7 +80,7 @@ async function sleepTabs(trigger) {
     const { history = [] } = await chrome.storage.local.get("history");
     await chrome.storage.local.set({ history: [...history, entry].slice(-HISTORY_LIMIT) });
   }
-  if (slept.length || trigger === "shortcut") notify(entry);
+  if (trigger === "shortcut" || (trigger === "click" && slept.length)) notify(entry);
 
   badge(String(slept.length), slept.length ? "#34A853" : "#8E8E93");
   setTimeout(() => chrome.action.setBadgeText({ text: "" }), FEEDBACK_MS);
