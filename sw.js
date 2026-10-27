@@ -2,14 +2,28 @@ const KEEP_RECENT = 5;
 const UNUSED_MINUTES = 5;
 const ALARM = "sleep-tabs";
 const HISTORY_LIMIT = 300;
-const SETTLE_MS = 3000;
 const FEEDBACK_MS = 5000;
+const PROCESS_EXIT_POLL_MS = 150;
+const PROCESS_EXIT_TIMEOUT_MS = 1200;
+const HOST = "com.user.dia_mem";
 
-const freeBytes = async () => (await chrome.system.memory.getInfo()).availableCapacity;
+const host = (cmd) => chrome.runtime.sendNativeMessage(HOST, { cmd });
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function badge(text, color) {
   chrome.action.setBadgeBackgroundColor({ color });
   chrome.action.setBadgeText({ text });
+}
+
+// Waits until some Dia process from `alive` exits; returns the new pid set and the dead pids.
+async function waitForExit(alive) {
+  for (let t = 0; t < PROCESS_EXIT_TIMEOUT_MS; t += PROCESS_EXIT_POLL_MS) {
+    await wait(PROCESS_EXIT_POLL_MS);
+    const now = new Set((await host("pids")).pids.map(String));
+    const dead = [...alive].filter((p) => !now.has(p));
+    if (dead.length) return { now, dead };
+  }
+  return { now: alive, dead: [] };
 }
 
 async function sleepTabs(trigger) {
@@ -20,14 +34,30 @@ async function sleepTabs(trigger) {
   );
   const candidates = tabs.filter((t) => !t.active && !t.audible && !t.discarded && !recent.has(t.id));
 
-  const before = await freeBytes();
-  const results = await Promise.allSettled(candidates.map((t) => chrome.tabs.discard(t.id)));
-  const slept = candidates.filter((_, i) => results[i].status === "fulfilled" && results[i].value);
-  // Freed memory is the change in system free RAM, so it's approximate and can be noisy.
-  if (slept.length) await new Promise((r) => setTimeout(r, SETTLE_MS));
-  const freedMB = slept.length ? Math.max(0, Math.round(((await freeBytes()) - before) / 2 ** 20)) : 0;
+  const snap = await host("snapshot").catch(() => null);
+  let alive = snap && new Set(Object.keys(snap.procs));
+  const slept = [];
+  // One tab at a time, so each exited renderer process is attributed to the tab that owned it.
+  // A renderer shared by several tabs of one site is credited to the last of them.
+  for (const t of candidates) {
+    if (!(await chrome.tabs.discard(t.id).catch(() => null))) continue;
+    let mb = null;
+    if (snap) {
+      const { now, dead } = await waitForExit(alive);
+      mb = dead.reduce((s, p) => s + snap.procs[p], 0);
+      alive = now;
+    }
+    slept.push({ title: t.title, mb });
+  }
 
-  const entry = { at: Date.now(), trigger, count: slept.length, failed: candidates.length - slept.length, freedMB, titles: slept.map((t) => t.title) };
+  const entry = {
+    at: Date.now(),
+    trigger,
+    count: slept.length,
+    failed: candidates.length - slept.length,
+    freedMB: snap ? slept.reduce((s, t) => s + t.mb, 0) : null,
+    tabs: slept.toSorted((a, b) => b.mb - a.mb),
+  };
   if (slept.length) {
     const { history = [] } = await chrome.storage.local.get("history");
     await chrome.storage.local.set({ history: [...history, entry].slice(-HISTORY_LIMIT) });
@@ -41,12 +71,13 @@ async function sleepTabs(trigger) {
   return entry;
 }
 
-function notify({ count, failed, freedMB }) {
+function notify({ count, failed, freedMB, tabs }) {
+  const top = tabs.slice(0, 3).map((t) => `${t.title} — ${t.mb} MB`).join("\n");
   chrome.notifications.create({
     type: "basic",
     iconUrl: "icon.png",
-    title: count ? `Приспано вкладок: ${count}` : "Нічого приспати",
-    message: count ? `Звільнено ~${freedMB} MB${failed ? ` · не вдалося: ${failed}` : ""}` : "Усі старі вкладки вже сплять.",
+    title: count ? `Приспано ${count}${freedMB != null ? `, звільнено ${freedMB} MB` : ""}` : "Нічого приспати",
+    message: count ? `${top}${failed ? `\nне вдалося: ${failed}` : ""}` : "Усі старі вкладки вже сплять.",
   });
 }
 
