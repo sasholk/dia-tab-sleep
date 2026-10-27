@@ -20,8 +20,8 @@
       --chip-hover: rgba(255, 255, 255, .14); --wash-strength: .5; --glow-blend: screen;
     }
   }
-  html { -webkit-font-smoothing: antialiased; }
-  body { margin: 0; min-width: 340px; min-height: 600px; height: 100vh; overflow: hidden; position: relative; background: var(--bg); color: var(--fg);
+  html { -webkit-font-smoothing: antialiased; background: var(--bg); overflow: hidden; }
+  body { margin: 0 auto; width: 400px; height: 600px; overflow: hidden; position: relative; background: var(--bg); color: var(--fg);
     font: 13px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
   h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   button { font: inherit; color: inherit; }
@@ -31,7 +31,7 @@
   .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* Glow: a profile-tinted wash drops in on open; during a clean it travels down and lands as the aurora. */
-  .glow { position: absolute; left: -20%; right: -20%; top: -100px; height: 250px; pointer-events: none;
+  .glow { position: fixed; left: -20%; right: -20%; top: -100px; height: 250px; pointer-events: none;
     transition: transform 260ms cubic-bezier(.2, .8, .2, 1); }
   .glow.landed { z-index: 1; mix-blend-mode: var(--glow-blend); transition-duration: 700ms; transition-timing-function: cubic-bezier(.16, 1, .3, 1); }
   .drop { position: absolute; inset: 0; transform-origin: top; animation: drop 1000ms cubic-bezier(.16, 1, .3, 1) both; }
