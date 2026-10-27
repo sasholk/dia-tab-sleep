@@ -3,10 +3,17 @@ const UNUSED_MINUTES = 5;
 const ALARM = "sleep-tabs";
 const HISTORY_LIMIT = 300;
 const SETTLE_MS = 3000;
+const FEEDBACK_MS = 5000;
 
 const freeBytes = async () => (await chrome.system.memory.getInfo()).availableCapacity;
 
+function badge(text, color) {
+  chrome.action.setBadgeBackgroundColor({ color });
+  chrome.action.setBadgeText({ text });
+}
+
 async function sleepTabs(trigger) {
+  badge("…", "#8E8E93");
   const tabs = await chrome.tabs.query({});
   const recent = new Set(
     tabs.toSorted((a, b) => b.lastAccessed - a.lastAccessed).slice(0, KEEP_RECENT).map((t) => t.id)
@@ -26,6 +33,11 @@ async function sleepTabs(trigger) {
     await chrome.storage.local.set({ history: [...history, entry].slice(-HISTORY_LIMIT) });
   }
   if (slept.length || trigger === "shortcut") notify(entry);
+
+  badge(String(slept.length), slept.length ? "#34A853" : "#8E8E93");
+  setTimeout(() => chrome.action.setBadgeText({ text: "" }), FEEDBACK_MS);
+  await chrome.storage.session.set({ lastResult: entry });
+  if (trigger === "shortcut") chrome.action.openPopup().catch(() => {});
   return entry;
 }
 

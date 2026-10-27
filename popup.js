@@ -1,4 +1,5 @@
 const WEEK_MS = 7 * 24 * 3600 * 1000;
+const FEEDBACK_MS = 5000;
 const TRIGGERS = { click: "кнопка", shortcut: "⌥⇧S", unfocus: "Dia неактивна", idle: "простій Mac" };
 
 const $ = (id) => document.getElementById(id);
@@ -38,10 +39,21 @@ async function render() {
 $("sleep").addEventListener("click", async () => {
   $("sleep").disabled = true;
   $("result").textContent = "Чищу…";
-  const { count, freedMB } = await chrome.runtime.sendMessage({ type: "sleep" });
-  $("result").textContent = count ? `Приспано ${count}, звільнено ~${mb(freedMB)}` : "Нічого приспати";
+  showResult(await chrome.runtime.sendMessage({ type: "sleep" }));
   $("sleep").disabled = false;
   render();
+});
+
+function showResult({ count, freedMB }) {
+  $("result").textContent = count ? `Приспано ${count}, звільнено ~${mb(freedMB)}` : "Нічого приспати";
+}
+
+// Opened by the shortcut right after a clean → show the result, then close unless hovered.
+chrome.storage.session.get("lastResult").then(({ lastResult }) => {
+  if (lastResult?.trigger !== "shortcut" || Date.now() - lastResult.at > FEEDBACK_MS) return;
+  showResult(lastResult);
+  const timer = setTimeout(() => window.close(), FEEDBACK_MS);
+  document.body.addEventListener("mouseenter", () => clearTimeout(timer), { once: true });
 });
 
 render();

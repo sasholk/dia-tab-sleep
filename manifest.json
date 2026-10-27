@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sleep Old Tabs",
-  "version": "2.0",
+  "version": "2.1",
   "description": "Unloads every tab except the most recent ones: on click, shortcut, or after 5 min of Dia being unused. Keeps a history.",
   "permissions": ["alarms", "idle", "notifications", "storage", "system.memory"],
   "background": { "service_worker": "sw.js" },
