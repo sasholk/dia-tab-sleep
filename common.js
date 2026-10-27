@@ -9,3 +9,24 @@ export function pickCandidates(tabs) {
   );
   return awake.filter((t) => !t.active && !t.audible && !recent.has(t.id));
 }
+
+// Dia profile theme colors (Preferences → browser.theme.user_color2).
+export const PROFILES = { sasholk: "#00B786", "o.dev": "#605BA3", boosters: "#D04E59", volume: "#008AC9" };
+
+const TRAVEL_PX = 480;
+const LANDED_PX = 590;
+const WASH_OPACITY = 0.55;
+const AURORA_OPACITY = 0.9;
+const round2 = (n) => Math.round(n * 100) / 100;
+
+// Where the glow sits during a clean: the top wash travels down with progress and lands as the aurora.
+export function glowFrame({ phase, done = 0, total = 1 }) {
+  if (phase === "done") return { y: LANDED_PX, washOpacity: 0, auroraOpacity: AURORA_OPACITY, landed: true };
+  const progress = phase === "running" ? (done + 1) / (total + 1) : 0;
+  return {
+    y: Math.round(progress * TRAVEL_PX),
+    washOpacity: round2(WASH_OPACITY * (1 - progress)),
+    auroraOpacity: round2(AURORA_OPACITY * progress),
+    landed: false,
+  };
+}
