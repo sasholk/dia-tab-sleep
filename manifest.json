@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Sleep Old Tabs",
-  "version": "1.1",
-  "description": "Unloads every tab except the most recent ones: on click, or after 5 min of Dia being unused.",
-  "permissions": ["alarms", "idle"],
+  "version": "2.0",
+  "description": "Unloads every tab except the most recent ones: on click, shortcut, or after 5 min of Dia being unused. Keeps a history.",
+  "permissions": ["alarms", "idle", "notifications", "storage", "system.memory"],
   "background": { "service_worker": "sw.js" },
-  "action": { "default_title": "Sleep all but recent tabs" },
+  "icons": { "128": "icon.png" },
+  "action": { "default_popup": "popup.html", "default_icon": "icon.png" },
   "commands": {
-    "_execute_action": { "suggested_key": { "default": "Alt+Shift+S" } }
+    "sleep-tabs": { "description": "Sleep all but recent tabs", "suggested_key": { "default": "Alt+Shift+S" } }
   }
 }

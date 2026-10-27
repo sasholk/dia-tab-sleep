@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="uk">
+<meta charset="utf-8" />
+<style>
+  :root { --bg: #fff; --fg: #1f1f1f; --muted: #6b6b6b; --line: #e6e6e6; --accent: #d97757; --track: #eee; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1e1e1e; --fg: #ececec; --muted: #9a9a9a; --line: #333; --track: #2c2c2c; }
+  }
+  body { margin: 0; width: 320px; padding: 14px; background: var(--bg); color: var(--fg); font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+  h2 { margin: 16px 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .row { display: flex; justify-content: space-between; }
+  .bar { height: 6px; margin: 6px 0 4px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .bar div { height: 100%; background: var(--accent); }
+  .muted { color: var(--muted); }
+  button { width: 100%; margin-top: 12px; padding: 8px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  #result { min-height: 1.4em; margin-top: 6px; text-align: center; }
+  ul { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; }
+  li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+</style>
+<body>
+  <div class="row"><strong>Пам'ять Mac</strong><span id="ram"></span></div>
+  <div class="bar"><div id="bar"></div></div>
+  <div class="muted" id="tabs"></div>
+
+  <button id="sleep">Приспати старі вкладки</button>
+  <div class="muted" id="result"></div>
+
+  <h2>За 7 днів</h2>
+  <div id="week"></div>
+
+  <h2>Історія</h2>
+  <ul id="history"></ul>
+  <script src="popup.js"></script>
+</body>
+</html>
