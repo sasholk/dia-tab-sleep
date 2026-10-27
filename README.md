@@ -10,7 +10,7 @@ Chromium extension (built for [Dia](https://www.diabrowser.com)) that unloads ev
 - Popup shows Dia's memory, sleep candidates, top freed tabs, weekly stats and per-clean history.
 - Styled after Dia: pick the popup's Dia profile once and it takes that profile's color, light or dark to match macOS.
 
-Freed memory is measured per tab: tabs are discarded one by one and the exited renderer processes are read by a small native host (`host/dia_mem.py`, uses `ps` and `top`). Without the host the extension still works, just without MB numbers.
+Freed memory is measured per tab: tabs are discarded one by one and the exited renderer processes are read by a small native host (`host/dia_mem.py`, uses `ps` and `top`). The same host powers the live "Heaviest tabs · Now" list: it matches each renderer's `--renderer-client-id` to the tab's `processId` from `webNavigation` (that permission shows as "read your browsing history" on install; nothing is stored or sent). Tabs sharing one renderer show as one row. Without the host the extension still works, just without MB numbers.
 
 <p align="center">
   <img src="docs/popup-sasholk.png" width="260" alt="Popup in a green Dia profile">

@@ -87,18 +87,36 @@ function buildPicker() {
   $("chip").addEventListener("click", () => togglePicker($("picker").hidden));
 }
 
-// Live per-tab memory needs chrome.processes (dev-channel only in most Chromium builds).
-async function liveTopTabs() {
-  if (!chrome.processes) return null;
-  const procs = await new Promise((r) => chrome.processes.getProcessInfo([], true, r));
-  return Object.values(procs)
-    .flatMap((p) => p.tasks.filter((t) => t.tabId != null).map((t) => ({ title: t.title, mb: Math.round(p.privateMemory / 2 ** 20) })))
+// The host keys renderers by --renderer-client-id, which is the processId webNavigation reports.
+// Tabs sharing a renderer can't be split, so they show as one row.
+async function liveTopTabs(tabs, renderers = {}) {
+  const groups = new Map();
+  await Promise.all(
+    tabs.filter((t) => !t.discarded).map(async (tab) => {
+      const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id }).catch(() => null);
+      const pid = frames?.find((f) => f.frameId === 0)?.processId;
+      if (renderers[pid]) groups.set(pid, [...(groups.get(pid) ?? []), tab]);
+    })
+  );
+  return [...groups]
+    .map(([pid, [first, ...rest]]) => ({ title: rest.length ? `${first.title} +${rest.length}` : first.title, mb: renderers[pid] }))
     .sort((a, b) => b.mb - a.mb)
     .slice(0, 3);
 }
 
-async function renderDia(capacityMB, usedMB) {
-  const snap = await chrome.runtime.sendNativeMessage(HOST, { cmd: "snapshot" }).catch((e) => ({ error: e.message }));
+let topLists = { now: [], slept: [] };
+let topMode = "now";
+
+function renderTop() {
+  const mode = topLists.now.length ? topMode : "slept";
+  $("topToggle").hidden = !topLists.now.length;
+  for (const b of $("topToggle").children) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+  $("top").replaceChildren(...topLists[mode].map(topItem));
+  if (!topLists[mode].length) $("top").replaceChildren(el("li", "Shows up after the next clean", "muted"));
+}
+
+async function renderDia(snapshot, capacityMB, usedMB) {
+  const snap = await snapshot;
   $("dia").classList.remove("loading");
   $("dia").textContent = snap.error ? "host unavailable" : mb(snap.total_mb);
   $("dia").title = snap.error ?? "";
@@ -116,8 +134,9 @@ async function render() {
   const capacityMB = Math.round(capacity / 2 ** 20);
   const usedMB = Math.round((capacity - availableCapacity) / 2 ** 20);
   $("ram").textContent = `${mb(usedMB)} / ${mb(capacityMB)}`;
-  // `top` takes ~1s, so Dia's total fills in after the rest.
-  renderDia(capacityMB, usedMB);
+  // `top` takes ~1s, so Dia's total and live tabs fill in after the rest.
+  const snapshot = chrome.runtime.sendNativeMessage(HOST, { cmd: "snapshot" }).catch((e) => ({ error: e.message }));
+  renderDia(snapshot, capacityMB, usedMB);
 
   const sleeping = tabs.filter((t) => t.discarded).length;
   $("tabs").textContent = `${tabs.length - sleeping} awake · ${sleeping} asleep`;
@@ -132,11 +151,16 @@ async function render() {
   $("weekFreed").textContent = week.length ? `${mb(sum(week, (h) => h.freedMB))} freed` : "No cleans yet";
   $("history").replaceChildren(...history.slice(-30).reverse().map(historyItem));
 
-  const live = await liveTopTabs().catch(() => null);
-  const top = live ?? week.flatMap((h) => h.tabs).filter((t) => t.mb).sort((a, b) => b.mb - a.mb).slice(0, 3);
-  $("topTitle").textContent = live ? "Heaviest tabs now" : "Heaviest slept · 7 days";
-  $("top").replaceChildren(...top.map(topItem));
-  if (!top.length) $("top").replaceChildren(el("li", "Shows up after the next clean", "muted"));
+  topLists.slept = week.flatMap((h) => h.tabs).filter((t) => t.mb).sort((a, b) => b.mb - a.mb).slice(0, 3);
+  topLists.now = await liveTopTabs(tabs, (await snapshot).renderers);
+  renderTop();
+}
+
+for (const b of $("topToggle").children) {
+  b.addEventListener("click", () => {
+    topMode = b.dataset.mode;
+    renderTop();
+  });
 }
 
 function showResult({ count, freedMB }) {

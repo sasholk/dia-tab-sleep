@@ -9,7 +9,7 @@
     --card: #fff; --card-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 8px 24px rgba(0, 0, 0, .05);
     --track: #e9e9ec; --rest: #c9c9cf; --chip: rgba(255, 255, 255, .75);
     --cta: #18181b; --cta-fg: #fafaf9; --cta-hover: #2a2a2e;
-    --chip-hover: #fff; --wash-strength: 1; --glow-blend: multiply;
+    --chip-hover: #fff; --seg-on: #fff; --wash-strength: 1; --glow-blend: multiply;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -17,7 +17,7 @@
       --card: rgba(255, 255, 255, .05); --card-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
       --track: #2a2a2f; --rest: #4a4a52; --chip: rgba(255, 255, 255, .08);
       --cta: #f2f2f3; --cta-fg: #161618; --cta-hover: #fff;
-      --chip-hover: rgba(255, 255, 255, .14); --wash-strength: .5; --glow-blend: screen;
+      --chip-hover: rgba(255, 255, 255, .14); --seg-on: #3a3a40; --wash-strength: .5; --glow-blend: screen;
     }
   }
   html { -webkit-font-smoothing: antialiased; background: var(--bg); overflow: hidden; }
@@ -80,6 +80,11 @@
   li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
   li + li { border-top: 1px solid var(--line); }
   li > :last-child { flex-shrink: 0; font-weight: 600; }
+  .seg { display: flex; padding: 2px; border-radius: 8px; background: var(--track); }
+  .seg[hidden] { display: none; }
+  .seg button { min-height: 22px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer;
+    transition: background-color 150ms ease-out; }
+  .seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
   .mark { width: 4px; border-radius: 2px; background: var(--profile); flex-shrink: 0; }
   #weekFreed { margin: 2px 0 6px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
   #history { overflow: hidden auto; min-height: 0; flex: 1; scrollbar-width: thin; scrollbar-gutter: stable; }
@@ -130,7 +135,12 @@
     <div class="muted" id="result" role="status"></div>
 
     <section class="card in" style="animation-delay: 120ms">
-      <h2 id="topTitle" style="margin-bottom: 4px">Heaviest tabs</h2>
+      <div class="row" style="align-items: center; margin-bottom: 4px">
+        <h2>Heaviest tabs</h2>
+        <div class="seg" id="topToggle" role="group" aria-label="Heaviest tabs" hidden>
+          <button data-mode="now" aria-pressed="true">Now</button><button data-mode="slept" aria-pressed="false">Slept · 7d</button>
+        </div>
+      </div>
       <ul id="top"></ul>
     </section>
 

@@ -1,17 +1,29 @@
 #!/usr/bin/python3
 """Native messaging host: reports memory footprint of Dia processes."""
-import json, struct, subprocess, sys
+import json, re, struct, subprocess, sys
 
 UNITS = {"B": 1 / 2**20, "K": 1 / 1024, "M": 1, "G": 1024}
+CLIENT_ID = re.compile(r"--renderer-client-id=(\d+)")
+
+
+def dia_procs():
+    """pid -> renderer client id (the processId webNavigation reports), or None for non-renderers."""
+    out = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
+    procs = {}
+    for line in out.splitlines():
+        pid, cmd = line.split(None, 1)
+        if "/Applications/Dia.app/" in cmd:
+            match = CLIENT_ID.search(cmd)
+            procs[int(pid)] = match and match[1]
+    return procs
 
 
 def dia_pids():
-    out = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
-    return {int(l.split(None, 1)[0]) for l in out.splitlines() if "/Applications/Dia.app/" in l}
+    return set(dia_procs())
 
 
 def snapshot():
-    pids = dia_pids()
+    pids = dia_procs()
     out = subprocess.run(["top", "-l", "1", "-stats", "pid,mem"], capture_output=True, text=True).stdout
     procs = {}
     for line in out.splitlines():
@@ -19,7 +31,8 @@ def snapshot():
         if len(parts) == 2 and parts[0].isdigit() and int(parts[0]) in pids:
             mem = parts[1].rstrip("+-")
             procs[parts[0]] = round(float(mem[:-1]) * UNITS.get(mem[-1], 1))
-    return {"total_mb": sum(procs.values()), "procs": procs}
+    renderers = {pids[int(pid)]: mb for pid, mb in procs.items() if pids[int(pid)]}
+    return {"total_mb": sum(procs.values()), "procs": procs, "renderers": renderers}
 
 
 def main():
