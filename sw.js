@@ -1,25 +1,44 @@
-const KEEP_RECENT = 5;
+import { HOST, pickCandidates } from "./common.js";
+
 const UNUSED_MINUTES = 5;
 const ALARM = "sleep-tabs";
 const HISTORY_LIMIT = 300;
 const FEEDBACK_MS = 5000;
-const PROCESS_EXIT_POLL_MS = 150;
-const PROCESS_EXIT_TIMEOUT_MS = 1200;
-const HOST = "com.user.dia_mem";
+const PROCESS_EXIT_POLL_MS = 100;
+const PROCESS_EXIT_TIMEOUT_MS = 1000;
 
-const host = (cmd) => chrome.runtime.sendNativeMessage(HOST, { cmd });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// One host process per clean instead of one per request; replies come back in request order.
+function openHost() {
+  const port = chrome.runtime.connectNative(HOST);
+  const pending = [];
+  port.onMessage.addListener((msg) => pending.shift()?.resolve(msg));
+  port.onDisconnect.addListener(() => {
+    const error = new Error(chrome.runtime.lastError?.message ?? "host disconnected");
+    pending.splice(0).forEach((p) => p.reject(error));
+  });
+  return {
+    ask: (cmd) => new Promise((resolve, reject) => {
+      pending.push({ resolve, reject });
+      port.postMessage({ cmd });
+    }),
+    close: () => port.disconnect(),
+  };
+}
 
 function badge(text, color) {
   chrome.action.setBadgeBackgroundColor({ color });
   chrome.action.setBadgeText({ text });
 }
 
+const progress = (done, total) => chrome.runtime.sendMessage({ type: "progress", done, total }).catch(() => {});
+
 // Waits until some Dia process from `alive` exits; returns the new pid set and the dead pids.
-async function waitForExit(alive) {
+async function waitForExit(host, alive) {
   for (let t = 0; t < PROCESS_EXIT_TIMEOUT_MS; t += PROCESS_EXIT_POLL_MS) {
     await wait(PROCESS_EXIT_POLL_MS);
-    const now = new Set((await host("pids")).pids.map(String));
+    const now = new Set((await host.ask("pids")).pids.map(String));
     const dead = [...alive].filter((p) => !now.has(p));
     if (dead.length) return { now, dead };
   }
@@ -28,27 +47,26 @@ async function waitForExit(alive) {
 
 async function sleepTabs(trigger) {
   badge("…", "#8E8E93");
-  const tabs = await chrome.tabs.query({});
-  const recent = new Set(
-    tabs.toSorted((a, b) => b.lastAccessed - a.lastAccessed).slice(0, KEEP_RECENT).map((t) => t.id)
-  );
-  const candidates = tabs.filter((t) => !t.active && !t.audible && !t.discarded && !recent.has(t.id));
+  const candidates = pickCandidates(await chrome.tabs.query({}));
 
-  const snap = await host("snapshot").catch(() => null);
+  const host = candidates.length ? openHost() : null;
+  const snap = await host?.ask("snapshot").catch(() => null);
   let alive = snap && new Set(Object.keys(snap.procs));
   const slept = [];
   // One tab at a time, so each exited renderer process is attributed to the tab that owned it.
   // A renderer shared by several tabs of one site is credited to the last of them.
-  for (const t of candidates) {
+  for (const [i, t] of candidates.entries()) {
+    progress(i, candidates.length);
     if (!(await chrome.tabs.discard(t.id).catch(() => null))) continue;
     let mb = null;
     if (snap) {
-      const { now, dead } = await waitForExit(alive);
+      const { now, dead } = await waitForExit(host, alive).catch(() => ({ now: alive, dead: [] }));
       mb = dead.reduce((s, p) => s + snap.procs[p], 0);
       alive = now;
     }
     slept.push({ title: t.title, mb });
   }
+  host?.close();
 
   const entry = {
     at: Date.now(),
@@ -71,8 +89,15 @@ async function sleepTabs(trigger) {
   return entry;
 }
 
+// Idle and unfocus often fire together; a second trigger joins the clean already running.
+let running = null;
+function sleepTabsOnce(trigger) {
+  running ??= sleepTabs(trigger).finally(() => (running = null));
+  return running;
+}
+
 function notify({ count, failed, freedMB, tabs }) {
-  const top = tabs.slice(0, 3).map((t) => `${t.title} — ${t.mb} MB`).join("\n");
+  const top = tabs.slice(0, 3).map((t) => `${t.title} — ${t.mb ?? "?"} MB`).join("\n");
   chrome.notifications.create({
     type: "basic",
     iconUrl: "icon.png",
@@ -83,17 +108,23 @@ function notify({ count, failed, freedMB, tabs }) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg.type !== "sleep") return;
-  sleepTabs("click").then(reply);
+  sleepTabsOnce("click").then(reply);
   return true;
 });
-chrome.commands.onCommand.addListener((cmd) => cmd === "sleep-tabs" && sleepTabs("shortcut"));
+chrome.commands.onCommand.addListener((cmd) => cmd === "sleep-tabs" && sleepTabsOnce("shortcut"));
 
 // Dia lost focus → sleep after UNUSED_MINUTES unless it comes back.
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) chrome.alarms.create(ALARM, { delayInMinutes: UNUSED_MINUTES });
   else chrome.alarms.clear(ALARM);
 });
-chrome.alarms.onAlarm.addListener((a) => a.name === ALARM && sleepTabs("unfocus"));
+chrome.alarms.onAlarm.addListener((a) => a.name === ALARM && sleepTabsOnce("unfocus"));
 
 chrome.idle.setDetectionInterval(UNUSED_MINUTES * 60);
-chrome.idle.onStateChanged.addListener((state) => state !== "active" && sleepTabs("idle"));
+chrome.idle.onStateChanged.addListener((state) => state !== "active" && sleepTabsOnce("idle"));
+
+// v1–v2 entries measured system free RAM, which swap made meaningless.
+chrome.runtime.onInstalled.addListener(async () => {
+  const { history = [] } = await chrome.storage.local.get("history");
+  await chrome.storage.local.set({ history: history.filter((h) => h.tabs) });
+});

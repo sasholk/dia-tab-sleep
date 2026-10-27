@@ -23,12 +23,13 @@ def snapshot():
 
 
 def main():
-    size = struct.unpack("<I", sys.stdin.buffer.read(4))[0]
-    cmd = json.loads(sys.stdin.buffer.read(size)).get("cmd")
-    reply = snapshot() if cmd == "snapshot" else {"pids": sorted(dia_pids())}
-    data = json.dumps(reply).encode()
-    sys.stdout.buffer.write(struct.pack("<I", len(data)) + data)
-    sys.stdout.buffer.flush()
+    # Serves requests until the extension disconnects (one-shot callers just send one).
+    while len(header := sys.stdin.buffer.read(4)) == 4:
+        cmd = json.loads(sys.stdin.buffer.read(struct.unpack("<I", header)[0])).get("cmd")
+        reply = snapshot() if cmd == "snapshot" else {"pids": sorted(dia_pids())}
+        data = json.dumps(reply).encode()
+        sys.stdout.buffer.write(struct.pack("<I", len(data)) + data)
+        sys.stdout.buffer.flush()
 
 
 if __name__ == "__main__":
