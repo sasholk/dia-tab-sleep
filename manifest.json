@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Sleep Old Tabs",
-  "version": "1.0",
-  "description": "One click: unload every tab except the most recent ones.",
+  "version": "1.1",
+  "description": "Unloads every tab except the most recent ones: on click, or after 5 min of Dia being unused.",
+  "permissions": ["alarms", "idle"],
   "background": { "service_worker": "sw.js" },
   "action": { "default_title": "Sleep all but recent tabs" },
   "commands": {
