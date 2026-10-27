@@ -12,8 +12,8 @@ Chromium extension (built for [Dia](https://www.diabrowser.com)) that unloads ev
 Freed memory is measured per tab: tabs are discarded one by one and the exited renderer processes are read by a small native host (`host/dia_mem.py`, uses `ps` and `top`). Without the host the extension still works, just without MB numbers.
 
 <p align="center">
-  <img src="docs/popup-dark.png" width="340" alt="Popup, dark theme">
-  <img src="docs/popup-light.png" width="340" alt="Popup, light theme">
+  <img src="docs/screenshot-dark.png" width="340" alt="Popup, dark theme">
+  <img src="docs/screenshot-light.png" width="340" alt="Popup, light theme">
 </p>
 <p align="center"><sub>Popup with sample data. Expand a history row to see what each clean freed.</sub></p>
 
