@@ -2,7 +2,7 @@
 <html lang="uk">
 <meta charset="utf-8" />
 <style>
-  :root { --bg: #fff; --fg: #1f1f1f; --muted: #6b6b6b; --line: #e6e6e6; --hover: #f4f4f4; --accent: #d97757; --accent-hover: #c96a4b; --track: #eee; }
+  :root { color-scheme: light dark; --bg: #fff; --fg: #1f1f1f; --muted: #6b6b6b; --line: #e6e6e6; --hover: #f4f4f4; --accent: #d97757; --accent-hover: #c96a4b; --track: #eee; }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #1e1e1e; --fg: #ececec; --muted: #9a9a9a; --line: #333; --hover: #2a2a2a; --track: #2c2c2c; }
   }
@@ -32,7 +32,7 @@
   ul { margin: 0; padding: 0; list-style: none; }
   li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); }
   li > :last-child { flex-shrink: 0; }
-  #history { max-height: 220px; overflow-y: auto; }
+  #history { max-height: 220px; overflow: hidden auto; }
   details { border-top: 1px solid var(--line); }
   summary { display: flex; justify-content: space-between; gap: 8px; padding: 5px 4px; margin: 0 -4px; border-radius: 4px; cursor: pointer; list-style: none; transition: background-color 150ms ease-out; }
   summary::-webkit-details-marker { display: none; }
