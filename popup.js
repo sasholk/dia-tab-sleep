@@ -2,13 +2,13 @@ import { HOST, KEEP_RECENT, pickCandidates } from "./common.js";
 
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 const FEEDBACK_MS = 5000;
-const TRIGGERS = { click: "кнопка", shortcut: "⌥⇧S", unfocus: "Dia неактивна", idle: "простій Mac" };
+const TRIGGERS = { click: "button", shortcut: "shortcut", unfocus: "Dia unfocused", idle: "Mac idle" };
 
 const $ = (id) => document.getElementById(id);
 const mb = (n) => (n == null ? "?" : n >= 1024 ? `${(n / 1024).toFixed(1)} GB` : `${n} MB`);
-const time = (ts) => new Date(ts).toLocaleString("uk-UA", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+const time = (ts) => new Date(ts).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" });
 const sum = (list, pick) => list.reduce((s, x) => s + (pick(x) ?? 0), 0);
-const plural = (n) => (n % 10 === 1 && n % 100 !== 11 ? "вкладку" : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? "вкладки" : "вкладок");
+const tabsWord = (n) => (n === 1 ? "tab" : "tabs");
 
 function el(tag, text = "", className = "") {
   const node = document.createElement(tag);
@@ -26,7 +26,7 @@ function row(tag, left, right, tooltip = "") {
 
 function historyItem(h) {
   const details = el("details");
-  details.append(row("summary", `${time(h.at)} · ${TRIGGERS[h.trigger]}`, `${h.count} вкл · ${mb(h.freedMB)}`));
+  details.append(row("summary", `${time(h.at)} · ${TRIGGERS[h.trigger]}`, `${h.count} ${tabsWord(h.count)} · ${mb(h.freedMB)}`));
   const list = el("ul");
   list.append(...h.tabs.map((t) => row("li", t.title, mb(t.mb), t.title)));
   details.append(list);
@@ -46,7 +46,7 @@ async function liveTopTabs() {
 async function renderDia(capacityMB, usedMB) {
   const snap = await chrome.runtime.sendNativeMessage(HOST, { cmd: "snapshot" }).catch((e) => ({ error: e.message }));
   $("dia").classList.remove("loading");
-  $("dia").textContent = snap.error ? "помічник недоступний" : mb(snap.total_mb);
+  $("dia").textContent = snap.error ? "host unavailable" : mb(snap.total_mb);
   $("dia").title = snap.error ?? "";
   const diaMB = snap.total_mb ?? 0;
   $("barDia").style.width = `${(diaMB / capacityMB) * 100}%`;
@@ -66,38 +66,38 @@ async function render() {
   renderDia(capacityMB, usedMB);
 
   const sleeping = tabs.filter((t) => t.discarded).length;
-  $("tabs").textContent = `Вкладки цього профілю: ${tabs.length - sleeping} активних · ${sleeping} сплять`;
+  $("tabs").textContent = `This profile: ${tabs.length - sleeping} awake · ${sleeping} asleep`;
 
   const n = pickCandidates(tabs).length;
   $("sleep").disabled = !n;
-  $("sleep").textContent = n ? `Приспати ${n} ${plural(n)}` : "Усі старі вкладки сплять";
-  $("sleep").title = `Не чіпає відкриті, ті що грають звук, і ${KEEP_RECENT} останніх`;
+  $("sleep").textContent = n ? `Sleep ${n} ${tabsWord(n)}` : "All old tabs are asleep";
+  $("sleep").title = `Keeps visible tabs, tabs playing audio and the ${KEEP_RECENT} most recent`;
 
   const week = history.filter((h) => Date.now() - h.at < WEEK_MS);
   $("week").textContent = week.length
-    ? `${week.length} чисток · ${sum(week, (h) => h.count)} вкладок · ${mb(sum(week, (h) => h.freedMB))}`
-    : "Чисток ще не було";
+    ? `${week.length} cleans · ${sum(week, (h) => h.count)} tabs · ${mb(sum(week, (h) => h.freedMB))}`
+    : "No cleans yet";
   $("history").replaceChildren(...history.slice(-30).reverse().map(historyItem));
-  if (!history.length) $("history").replaceChildren(el("div", "Порожньо", "muted"));
+  if (!history.length) $("history").replaceChildren(el("div", "Empty", "muted"));
 
   const live = await liveTopTabs().catch(() => null);
   const top = live ?? week.flatMap((h) => h.tabs).filter((t) => t.mb).sort((a, b) => b.mb - a.mb).slice(0, 3);
-  $("topTitle").textContent = live ? "Найважчі вкладки зараз" : "Найважчі з приспаних за 7 днів";
+  $("topTitle").textContent = live ? "Heaviest tabs now" : "Heaviest slept, last 7 days";
   $("top").replaceChildren(...top.map((t) => row("li", t.title, mb(t.mb), t.title)));
-  if (!top.length) $("top").replaceChildren(el("li", "З'явиться після наступної чистки", "muted"));
+  if (!top.length) $("top").replaceChildren(el("li", "Shows up after the next clean", "muted"));
 }
 
 function showResult({ count, freedMB }) {
-  $("result").textContent = count ? `Приспано ${count}, звільнено ${mb(freedMB)}` : "Нічого приспати";
+  $("result").textContent = count ? `Slept ${count} ${tabsWord(count)}, freed ${mb(freedMB)}` : "Nothing to sleep";
 }
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === "progress") $("result").textContent = `Присипляю ${msg.done + 1} з ${msg.total}…`;
+  if (msg.type === "progress") $("result").textContent = `Sleeping ${msg.done + 1} of ${msg.total}…`;
 });
 
 $("sleep").addEventListener("click", async () => {
   $("sleep").disabled = true;
-  $("result").textContent = "Готуюсь…";
+  $("result").textContent = "Preparing…";
   showResult(await chrome.runtime.sendMessage({ type: "sleep" }));
   render();
 });

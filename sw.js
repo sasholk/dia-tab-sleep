@@ -101,8 +101,8 @@ function notify({ count, failed, freedMB, tabs }) {
   chrome.notifications.create({
     type: "basic",
     iconUrl: "icon.png",
-    title: count ? `Приспано ${count}${freedMB != null ? `, звільнено ${freedMB} MB` : ""}` : "Нічого приспати",
-    message: count ? `${top}${failed ? `\nне вдалося: ${failed}` : ""}` : "Усі старі вкладки вже сплять.",
+    title: count ? `Slept ${count} ${count === 1 ? "tab" : "tabs"}${freedMB != null ? `, freed ${freedMB} MB` : ""}` : "Nothing to sleep",
+    message: count ? `${top}${failed ? `\nfailed: ${failed}` : ""}` : "All old tabs are already asleep.",
   });
 }
 

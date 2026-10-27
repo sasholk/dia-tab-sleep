@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <meta charset="utf-8" />
 <style>
   :root { color-scheme: light dark; --bg: #fff; --fg: #1f1f1f; --muted: #6b6b6b; --line: #e6e6e6; --hover: #f4f4f4; --accent: #d97757; --accent-hover: #c96a4b; --track: #eee; }
@@ -43,19 +43,19 @@
 <body>
   <div class="row big"><span>Dia</span><span id="dia" class="loading">— GB</span></div>
   <div class="bar"><div id="barDia"></div><div id="barRest"></div></div>
-  <div class="row muted"><span>Mac зайнято</span><span id="ram"></span></div>
+  <div class="row muted"><span>Mac in use</span><span id="ram"></span></div>
   <div class="muted" id="tabs"></div>
 
-  <button id="sleep">Приспати старі вкладки</button>
+  <button id="sleep">Sleep old tabs</button>
   <div class="muted" id="result"></div>
 
-  <h2 id="topTitle">Найважчі вкладки</h2>
+  <h2 id="topTitle">Heaviest tabs</h2>
   <ul id="top"></ul>
 
-  <h2>За 7 днів</h2>
+  <h2>Last 7 days</h2>
   <div id="week"></div>
 
-  <h2>Історія</h2>
+  <h2>History</h2>
   <div id="history"></div>
   <script type="module" src="popup.js"></script>
 </body>
