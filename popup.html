@@ -2,61 +2,144 @@
 <html lang="en">
 <meta charset="utf-8" />
 <style>
-  :root { color-scheme: light dark; --bg: #fff; --fg: #1f1f1f; --muted: #6b6b6b; --line: #e6e6e6; --hover: #f4f4f4; --accent: #d97757; --accent-hover: #c96a4b; --track: #eee; }
+  :root {
+    color-scheme: light dark;
+    --profile: #00b786;
+    --bg: #fafaf9; --fg: #18181b; --muted: #4b4b53; --line: #efefef; --hover: rgba(0, 0, 0, .04);
+    --card: #fff; --card-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 8px 24px rgba(0, 0, 0, .05);
+    --track: #e9e9ec; --rest: #c9c9cf; --chip: rgba(255, 255, 255, .75);
+    --cta: #18181b; --cta-fg: #fafaf9; --cta-hover: #2a2a2e;
+    --chip-hover: #fff; --wash-strength: 1; --glow-blend: multiply;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1e1e1e; --fg: #ececec; --muted: #9a9a9a; --line: #333; --hover: #2a2a2a; --track: #2c2c2c; }
+    :root {
+      --bg: #161618; --fg: #f2f2f3; --muted: #a1a1a8; --line: rgba(255, 255, 255, .07); --hover: rgba(255, 255, 255, .05);
+      --card: rgba(255, 255, 255, .05); --card-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+      --track: #2a2a2f; --rest: #4a4a52; --chip: rgba(255, 255, 255, .08);
+      --cta: #f2f2f3; --cta-fg: #161618; --cta-hover: #fff;
+      --chip-hover: rgba(255, 255, 255, .14); --wash-strength: .5; --glow-blend: screen;
+    }
   }
   html { -webkit-font-smoothing: antialiased; }
-  body { margin: 0; width: 340px; padding: 14px; background: var(--bg); color: var(--fg); font: 13px/1.4 -apple-system, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
-  h2 { margin: 16px 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  .row { display: flex; justify-content: space-between; gap: 8px; }
+  body { margin: 0; width: 340px; height: 600px; overflow: hidden; position: relative; background: var(--bg); color: var(--fg);
+    font: 13px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  button { font: inherit; color: inherit; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .row > :last-child { flex-shrink: 0; }
-  .big { font-size: 15px; font-weight: 600; }
-  .muted { color: var(--muted); }
+  .muted { color: var(--muted); font-size: 12px; }
   .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .loading { opacity: .5; }
 
-  .bar { height: 6px; margin: 6px 0 4px; border-radius: 3px; background: var(--track); overflow: hidden; display: flex; }
-  .bar div { height: 100%; width: 0; transition: width 300ms ease-out; }
-  #barDia { background: var(--accent); }
-  #barRest { background: var(--muted); opacity: .45; }
+  /* Glow: a profile-tinted wash drops in on open; during a clean it travels down and lands as the aurora. */
+  .glow { position: absolute; left: -20%; right: -20%; top: -100px; height: 250px; pointer-events: none;
+    transition: transform 260ms cubic-bezier(.2, .8, .2, 1); }
+  .glow.landed { z-index: 1; mix-blend-mode: var(--glow-blend); transition-duration: 700ms; transition-timing-function: cubic-bezier(.16, 1, .3, 1); }
+  .drop { position: absolute; inset: 0; transform-origin: top; animation: drop 1000ms cubic-bezier(.16, 1, .3, 1) both; }
+  .layer { position: absolute; inset: 0; filter: blur(38px); transition: opacity 450ms ease-out; }
+  .wash { --wash: .55; opacity: calc(var(--wash) * var(--wash-strength));
+    background: linear-gradient(90deg, color-mix(in oklab, var(--profile), #fff 55%), color-mix(in oklab, var(--profile), #fff 30%) 45%, color-mix(in oklab, var(--profile), #ffc0dd 55%)); }
+  .aurora { opacity: 0; transform-origin: bottom;
+    background: linear-gradient(90deg, color-mix(in oklab, var(--profile), #4f7cff 45%), var(--profile) 40%, color-mix(in oklab, var(--profile), #ffd25a 40%) 75%, color-mix(in oklab, var(--profile), #ff6bb5 50%)); }
+  .landed .aurora { animation: bloom 1100ms cubic-bezier(.16, 1, .3, 1) 500ms both; }
 
-  button { width: 100%; min-height: 36px; margin-top: 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  main { position: relative; height: 100%; box-sizing: border-box; padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 14px; }
+  .in { animation: fadeUp 320ms cubic-bezier(.2, .8, .2, 1) both; }
+
+  .chip { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 4px 10px 4px 6px; border: 0; border-radius: 999px;
+    background: var(--chip); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background-color 150ms ease-out; }
+  .chip:hover { background: var(--chip-hover); }
+  .dot { width: 14px; height: 14px; border-radius: 999px; background: var(--profile); flex-shrink: 0; }
+  #picker { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--card); box-shadow: var(--card-shadow); }
+  #picker[hidden] { display: none; }
+  .swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 44px; padding: 6px 2px; border: 0; border-radius: 10px;
+    background: transparent; font-size: 11px; cursor: pointer; transition: background-color 150ms ease-out; }
+  .swatch:hover { background: var(--hover); }
+  .swatch[aria-pressed="true"] { background: var(--hover); box-shadow: inset 0 0 0 2px var(--fg); }
+  .swatch .dot { width: 18px; height: 18px; }
+
+  #dia { font-size: 40px; font-weight: 600; letter-spacing: -.03em; transition: opacity 150ms ease-out; }
+  #dia.loading { opacity: .4; }
+  .bar { display: flex; height: 6px; margin: 2px 0; border-radius: 999px; overflow: hidden; background: var(--track); }
+  .bar div { width: 0; transition: width 500ms cubic-bezier(.16, 1, .3, 1); }
+  #barDia { background: linear-gradient(90deg, var(--profile), color-mix(in oklab, var(--profile), #fff 25%)); }
+  #barRest { background: var(--rest); }
+
+  .cta { width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: var(--cta); color: var(--cta-fg); font-size: 15px; font-weight: 600; cursor: pointer;
     transition-property: transform, background-color, opacity; transition-duration: 150ms; transition-timing-function: ease-out; }
-  button:hover:not(:disabled) { background: var(--accent-hover); }
-  button:active:not(:disabled) { transform: scale(.97); }
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button:disabled { opacity: .55; cursor: default; }
-  #result { min-height: 1.4em; margin-top: 6px; text-align: center; text-wrap: pretty; transition: opacity 150ms ease-out; }
+  .cta:hover:not(:disabled) { background: var(--cta-hover); }
+  .cta:active:not(:disabled) { transform: scale(.97); }
+  .cta:disabled { opacity: .55; cursor: default; }
+  :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  #result { min-height: 18px; margin-top: -8px; text-align: center; }
 
+  .card { display: flex; flex-direction: column; padding: 12px 14px; border-radius: 12px; background: var(--card); box-shadow: var(--card-shadow); }
+  .card.grow { flex: 1; min-height: 0; }
   ul { margin: 0; padding: 0; list-style: none; }
-  li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); }
-  li > :last-child { flex-shrink: 0; }
-  #history { max-height: 220px; overflow: hidden auto; }
+  li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; }
+  li + li { border-top: 1px solid var(--line); }
+  li > :last-child { flex-shrink: 0; font-weight: 600; }
+  .mark { width: 4px; border-radius: 2px; background: var(--profile); flex-shrink: 0; }
+  #weekFreed { margin: 2px 0 6px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+  #history { overflow: hidden auto; min-height: 0; flex: 1; scrollbar-width: thin; scrollbar-gutter: stable; }
   details { border-top: 1px solid var(--line); }
-  summary { display: flex; justify-content: space-between; gap: 8px; padding: 5px 4px; margin: 0 -4px; border-radius: 4px; cursor: pointer; list-style: none; transition: background-color 150ms ease-out; }
+  summary { display: flex; justify-content: space-between; gap: 8px; padding: 6px 4px; margin: 0 -4px; border-radius: 6px; cursor: pointer; list-style: none;
+    transition: background-color 150ms ease-out; }
   summary::-webkit-details-marker { display: none; }
+  summary > :last-child { flex-shrink: 0; }
   summary:hover { background: var(--hover); }
   details ul { padding: 0 0 6px 12px; }
-  details li { border: 0; padding: 2px 0; color: var(--muted); }
+  details li { border: 0 !important; padding: 2px 0; color: var(--muted); }
+  details li > :last-child { font-weight: 400; }
+
+  @keyframes drop { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+  @keyframes bloom { 0% { transform: scaleY(1); } 45% { transform: scaleY(1.4); } 100% { transform: scaleY(1); } }
+  @keyframes fadeUp { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .drop, .landed .aurora, .in { animation: none; }
+    .glow, .layer, .bar div { transition: none; }
+  }
 </style>
 <body>
-  <div class="row big"><span>Dia</span><span id="dia" class="loading">— GB</span></div>
-  <div class="bar"><div id="barDia"></div><div id="barRest"></div></div>
-  <div class="row muted"><span>Mac in use</span><span id="ram"></span></div>
-  <div class="muted" id="tabs"></div>
+  <div class="glow" id="glow" aria-hidden="true">
+    <div class="drop">
+      <div class="layer aurora" id="aurora"></div>
+      <div class="layer wash" id="wash"></div>
+    </div>
+  </div>
 
-  <button id="sleep">Sleep old tabs</button>
-  <div class="muted" id="result"></div>
+  <main>
+    <div class="row in" style="align-items: center">
+      <button class="chip" id="chip" aria-expanded="false" aria-controls="picker"><span class="dot"></span><span id="profileName">Pick profile</span></button>
+      <span class="muted" id="tabs"></span>
+    </div>
 
-  <h2 id="topTitle">Heaviest tabs</h2>
-  <ul id="top"></ul>
+    <div id="picker" hidden>
+      <span class="muted">Which Dia profile is this popup in?</span>
+      <div class="swatches" id="swatches"></div>
+    </div>
 
-  <h2>Last 7 days</h2>
-  <div id="week"></div>
+    <div class="in" style="animation-delay: 40ms; display: flex; flex-direction: column; gap: 6px">
+      <div class="row"><span style="font-size: 15px; font-weight: 600">Dia</span><span id="dia" class="loading">— GB</span></div>
+      <div class="bar"><div id="barDia"></div><div id="barRest"></div></div>
+      <div class="row muted"><span>Mac in use</span><span id="ram"></span></div>
+    </div>
 
-  <h2>History</h2>
-  <div id="history"></div>
+    <button class="cta in" id="sleep" style="animation-delay: 80ms">Sleep old tabs</button>
+    <div class="muted" id="result" role="status"></div>
+
+    <section class="card in" style="animation-delay: 120ms">
+      <h2 id="topTitle" style="margin-bottom: 4px">Heaviest tabs</h2>
+      <ul id="top"></ul>
+    </section>
+
+    <section class="card grow in" style="animation-delay: 160ms">
+      <div class="row"><h2>Last 7 days</h2><span class="muted" id="weekMeta"></span></div>
+      <div id="weekFreed"></div>
+      <div id="history"></div>
+    </section>
+  </main>
   <script type="module" src="popup.js"></script>
 </body>
 </html>
