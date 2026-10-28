@@ -1,10 +1,13 @@
 <!doctype html>
 <html lang="en">
 <meta charset="utf-8" />
+<script src="theme.js"></script>
 <style>
+  @property --profile { syntax: "<color>"; inherits: true; initial-value: #8e8e96; }
   :root {
     color-scheme: light dark;
-    --profile: #00b786;
+    transition: --profile 400ms ease-out;
+    --dia-rest: color-mix(in oklab, var(--profile), var(--track) 60%);
     --bg: #fafaf9; --fg: #18181b; --muted: #4b4b53; --line: #efefef; --hover: rgba(0, 0, 0, .04);
     --card: #fff; --card-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 8px 24px rgba(0, 0, 0, .05);
     --track: #e9e9ec; --rest: #c9c9cf; --chip: rgba(255, 255, 255, .75);
@@ -48,7 +51,10 @@
   .chip { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 4px 10px 4px 6px; border: 0; border-radius: 999px;
     background: var(--chip); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); font-size: 12px; font-weight: 600; cursor: pointer;
     transition: background-color 150ms ease-out; }
-  .chip:hover { background: var(--chip-hover); }
+  .chip:hover:not(:disabled) { background: var(--chip-hover); }
+  .chip:disabled { cursor: default; }
+  .chip-mem { color: var(--muted); font-weight: 500; }
+  .chip-mem:empty { display: none; }
   .dot { width: 14px; height: 14px; border-radius: 999px; background: var(--profile); flex-shrink: 0; }
   #picker { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--card); box-shadow: var(--card-shadow); }
   #picker[hidden] { display: none; }
@@ -58,12 +64,14 @@
   .swatch:hover { background: var(--hover); }
   .swatch[aria-pressed="true"] { background: var(--hover); box-shadow: inset 0 0 0 2px var(--fg); }
   .swatch .dot { width: 18px; height: 18px; }
+  .swatch .ellipsis { max-width: 100%; }
 
   #dia { font-size: 40px; font-weight: 600; letter-spacing: -.03em; transition: opacity 150ms ease-out; }
   #dia.loading { opacity: .4; }
   .bar { display: flex; height: 6px; margin: 2px 0; border-radius: 999px; overflow: hidden; background: var(--track); }
   .bar div { width: 0; transition: width 500ms cubic-bezier(.16, 1, .3, 1); }
-  #barDia { background: linear-gradient(90deg, var(--profile), color-mix(in oklab, var(--profile), #fff 25%)); }
+  #barProfile { background: linear-gradient(90deg, var(--profile), color-mix(in oklab, var(--profile), #fff 25%)); }
+  #barDia { background: var(--dia-rest); }
   #barRest { background: var(--rest); }
 
   .cta { width: 100%; min-height: 44px; border: 0; border-radius: 10px; background: var(--cta); color: var(--cta-fg); font-size: 15px; font-weight: 600; cursor: pointer;
@@ -97,13 +105,21 @@
   details ul { padding: 0 0 6px 12px; }
   details li { border: 0 !important; padding: 2px 0; color: var(--muted); }
   details li > :last-child { font-weight: 400; }
+  #breakdown { border: 0; }
+  #breakdown summary { padding: 2px 4px; }
+  #breakdown ul { padding: 2px 0 0; }
+  #breakdown li { gap: 8px; }
+  #breakdown li > :last-child { color: var(--fg); font-weight: 600; }
+  #breakdown .dot { width: 8px; height: 8px; }
+  .chevron { transition: transform 150ms ease-out; }
+  details[open] .chevron { transform: rotate(90deg); }
 
   @keyframes drop { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
   @keyframes bloom { 0% { transform: scaleY(1); } 45% { transform: scaleY(1.4); } 100% { transform: scaleY(1); } }
   @keyframes fadeUp { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
   @media (prefers-reduced-motion: reduce) {
     .drop, .landed .aurora, .in { animation: none; }
-    .glow, .layer, .bar div { transition: none; }
+    :root, .glow, .layer, .bar div { transition: none; }
   }
 </style>
 <body>
@@ -116,7 +132,7 @@
 
   <main>
     <div class="row in" style="align-items: center">
-      <button class="chip" id="chip" aria-expanded="false" aria-controls="picker"><span class="dot"></span><span id="profileName">Pick profile</span></button>
+      <button class="chip" id="chip" disabled aria-expanded="false" aria-controls="picker"><span class="dot"></span><span id="profileName"></span><span id="profileMem" class="chip-mem"></span></button>
       <span class="muted" id="tabs"></span>
     </div>
 
@@ -127,8 +143,12 @@
 
     <div class="in" style="animation-delay: 40ms; display: flex; flex-direction: column; gap: 6px">
       <div class="row"><span style="font-size: 15px; font-weight: 600">Dia</span><span id="dia" class="loading">— GB</span></div>
-      <div class="bar"><div id="barDia"></div><div id="barRest"></div></div>
+      <div class="bar"><div id="barProfile" title="This profile's tabs"></div><div id="barDia" title="Other profiles and Dia itself"></div><div id="barRest"></div></div>
       <div class="row muted"><span>Mac in use</span><span id="ram"></span></div>
+      <details id="breakdown" hidden>
+        <summary class="muted"><span>Where Dia's memory goes</span><span class="chevron" aria-hidden="true">›</span></summary>
+        <ul id="kinds"></ul>
+      </details>
     </div>
 
     <button class="cta in" id="sleep" style="animation-delay: 80ms">Sleep old tabs</button>

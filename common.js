@@ -10,8 +10,6 @@ export function pickCandidates(tabs) {
   return awake.filter((t) => !t.active && !t.audible && !recent.has(t.id));
 }
 
-// Dia profile theme colors (Preferences → browser.theme.user_color2).
-export const PROFILES = { sasholk: "#00B786", "o.dev": "#605BA3", boosters: "#D04E59", volume: "#008AC9" };
 
 const TRAVEL_PX = 480;
 const LANDED_PX = 590;
